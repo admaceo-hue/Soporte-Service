@@ -27,7 +27,7 @@ public class Ticket {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-    // Usamos CamelCase en Java, pero mapea a user_id en la tabla
+   
     @Column(name = "user_id", nullable = false)
     private Integer userId;
 

@@ -5,6 +5,7 @@ import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -27,29 +28,27 @@ public class SoporteController {
     @Autowired
     private SoporteService soporteService;
 
-    // 1. CREAR TICKET
     @PostMapping
-    public ResponseEntity<TicketResponse> crearTicket(@Valid @RequestBody TicketRequest request) {
-        TicketResponse nuevoTicket = soporteService.crearTicket(request);
+    public ResponseEntity<TicketResponse> crearTicket(@Valid @RequestBody TicketRequest request, Authentication authentication) {
+        String userIdString = authentication.getName();
+        Integer userId = Integer.parseInt(userIdString);
+        TicketResponse nuevoTicket = soporteService.crearTicket(request, userId);
         return new ResponseEntity<>(nuevoTicket, HttpStatus.CREATED);
     }
 
-    // 2. LISTAR MIS TICKETS (USER)
-    @GetMapping("/usuario/{userId}")
-    public ResponseEntity<List<TicketResponse>> listarTicketsUsuario(@PathVariable Integer userId) {
+    @GetMapping("/mis-tickets")
+    public ResponseEntity<List<TicketResponse>> listarTicketsUsuario(Authentication authentication) {
+        String userId = authentication.getName();
         List<TicketResponse> tickets = soporteService.listarTicketsUsuario(userId);
         return ResponseEntity.ok(tickets);
     }
 
-    // 3. LISTAR TODOS LOS TICKETS (ADMIN)
     @GetMapping("/admin/todos")
     public ResponseEntity<List<TicketResponse>> listarTodosLosTickets() {
         List<TicketResponse> tickets = soporteService.listarTodosLosTickets();
         return ResponseEntity.ok(tickets);
     }
 
-    // 4. ACTUALIZAR ESTADO DEL TICKET (ADMIN)
-    
     @PutMapping("/admin/{ticketId}/estado")
     public ResponseEntity<TicketResponse> actualizarEstadoTicket(
             @PathVariable Integer ticketId,

@@ -10,7 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mariluz.soporte.dto.TicketRequest;
 import com.mariluz.soporte.dto.TicketResponse;
-import com.mariluz.soporte.exception.ResourceNotFoundException; 
+import com.mariluz.soporte.exception.ResourceNotFoundException;
 import com.mariluz.soporte.model.Estado;
 import com.mariluz.soporte.model.Ticket;
 import com.mariluz.soporte.model.TicketMessage;
@@ -26,11 +26,10 @@ public class SoporteService {
     @Autowired
     private TicketMessageRepository ticketMessageRepository;
 
-    // 1. CREAR TICKET
     @Transactional
-    public TicketResponse crearTicket(TicketRequest request) {
+    public TicketResponse crearTicket(TicketRequest request, Integer userId) {
         Ticket ticket = Ticket.builder()
-                .userId(request.getUserId())
+                .userId(userId)
                 .asunto(request.getAsunto())
                 .descripcion(request.getDescripcion())
                 .estado(Estado.ABIERTO)
@@ -40,16 +39,14 @@ public class SoporteService {
         return mapearATicketResponse(ticketGuardado);
     }
 
-    // 2. LISTAR TICKETS DEL USUARIO
     @Transactional(readOnly = true)
-    public List<TicketResponse> listarTicketsUsuario(Integer userId) {
+    public List<TicketResponse> listarTicketsUsuario(String userId) {
         List<Ticket> tickets = ticketRepository.buscarPorUserId(userId);
         return tickets.stream()
                 .map(this::mapearATicketResponse)
                 .collect(Collectors.toList());
     }
 
-    // 3. LISTAR TODOS LOS TICKETS (ADMIN)
     @Transactional(readOnly = true)
     public List<TicketResponse> listarTodosLosTickets() {
         List<Ticket> tickets = ticketRepository.findAll();
@@ -58,31 +55,25 @@ public class SoporteService {
                 .collect(Collectors.toList());
     }
 
-    // 4. ACTUALIZAR ESTADO DEL TICKET (ADMIN)
     @Transactional
     public TicketResponse actualizarEstadoTicket(Integer ticketId, String nuevoEstado) {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket no encontrado con el ID: " + ticketId));
-        
+
         ticket.setEstado(Estado.valueOf(nuevoEstado.toUpperCase()));
         Ticket ticketActualizado = ticketRepository.save(ticket);
-        
+
         return mapearATicketResponse(ticketActualizado);
     }
 
-    // Método auxiliar ultra-limpio y protegido contra errores de mapeo
     private TicketResponse mapearATicketResponse(Ticket ticket) {
         List<TicketMessage> mensajes;
-        
         try {
-            // Intenta buscar los mensajes usando el método del repositorio
             mensajes = ticketMessageRepository.buscarMensajesPorTicketId(ticket.getId());
             if (mensajes == null) {
                 mensajes = new ArrayList<>();
             }
         } catch (Exception e) {
-            // Si el repositorio llega a fallar por choques del id String o columnas, 
-            // atrapamos el error para que NO rompa el flujo y devolvemos una lista vacía.
             mensajes = new ArrayList<>();
         }
 

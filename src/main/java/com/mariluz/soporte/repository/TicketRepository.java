@@ -12,7 +12,6 @@ import com.mariluz.soporte.model.Ticket;
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Integer> {
 
-    // Consulta manual blindada para buscar los tickets de un usuario
     @Query("SELECT t FROM Ticket t WHERE t.userId = :userId")
-    List<Ticket> buscarPorUserId(@Param("userId") Integer userId);
+    List<Ticket> buscarPorUserId(@Param("userId") String userId);
 }

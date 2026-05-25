@@ -8,7 +8,7 @@ import lombok.Data;
 public class TicketRequest {
     
     @NotNull(message = "El ID de usuario es obligatorio")
-    private Integer userId;
+    private String userId;
 
     @NotBlank(message = "El asunto no puede estar vacío")
     private String asunto;
