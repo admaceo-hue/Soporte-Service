@@ -26,8 +26,9 @@ public class SoporteService {
 
     @Autowired
     private TicketMessageRepository ticketMessageRepository;
-
+    
     @Transactional
+    // Crea un nuevo ticket de soporte para el usuario autenticado
     public TicketResponse crearTicket(TicketRequest request, String userId) {
         Ticket ticket = Ticket.builder()
                 .userId(userId)
@@ -39,7 +40,7 @@ public class SoporteService {
         Ticket ticketGuardado = ticketRepository.save(ticket);
         return mapearATicketResponse(ticketGuardado);
     }
-
+// Lista los tickets de soporte del usuario autenticado
     @Transactional(readOnly = true)
     public List<TicketResponse> listarTicketsUsuario(String userId) {
         List<Ticket> tickets = ticketRepository.buscarPorUserId(userId);
@@ -47,7 +48,7 @@ public class SoporteService {
                 .map(this::mapearATicketResponse)
                 .collect(Collectors.toList());
     }
-
+// Lista todos los tickets de soporte (solo para administradores)
     @Transactional(readOnly = true)
     public List<TicketResponse> listarTodosLosTickets() {
         List<Ticket> tickets = ticketRepository.findAll();
@@ -55,7 +56,7 @@ public class SoporteService {
                 .map(this::mapearATicketResponse)
                 .collect(Collectors.toList());
     }
-
+// Actualiza el estado de un ticket de soporte (solo para administradores)
     @Transactional
     public TicketResponse actualizarEstadoTicket(Integer ticketId, String nuevoEstado) {
         Ticket ticket = ticketRepository.findById(ticketId)
