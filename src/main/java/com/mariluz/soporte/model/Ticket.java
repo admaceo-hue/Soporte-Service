@@ -29,7 +29,7 @@ public class Ticket {
 
    
     @Column(name = "user_id", nullable = false)
-    private Integer userId;
+    private String userId;
 
     @Column(nullable = false)
     private String asunto;

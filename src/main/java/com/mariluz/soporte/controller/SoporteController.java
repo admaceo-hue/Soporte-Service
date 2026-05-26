@@ -22,16 +22,15 @@ import com.mariluz.soporte.service.SoporteService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("/api/soporte")
+@RequestMapping("soporte")
 public class SoporteController {
 
     @Autowired
     private SoporteService soporteService;
 
-    @PostMapping
+    @PostMapping("/crear")
     public ResponseEntity<TicketResponse> crearTicket(@Valid @RequestBody TicketRequest request, Authentication authentication) {
-        String userIdString = authentication.getName();
-        Integer userId = Integer.parseInt(userIdString);
+        String userId = authentication.getName();
         TicketResponse nuevoTicket = soporteService.crearTicket(request, userId);
         return new ResponseEntity<>(nuevoTicket, HttpStatus.CREATED);
     }

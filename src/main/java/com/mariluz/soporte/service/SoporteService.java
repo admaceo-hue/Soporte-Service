@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.mariluz.soporte.dto.TicketRequest;
 import com.mariluz.soporte.dto.TicketResponse;
+import com.mariluz.soporte.exception.InvalidStatusException;
 import com.mariluz.soporte.exception.ResourceNotFoundException;
 import com.mariluz.soporte.model.Estado;
 import com.mariluz.soporte.model.Ticket;
@@ -27,7 +28,7 @@ public class SoporteService {
     private TicketMessageRepository ticketMessageRepository;
 
     @Transactional
-    public TicketResponse crearTicket(TicketRequest request, Integer userId) {
+    public TicketResponse crearTicket(TicketRequest request, String userId) {
         Ticket ticket = Ticket.builder()
                 .userId(userId)
                 .asunto(request.getAsunto())
@@ -60,21 +61,30 @@ public class SoporteService {
         Ticket ticket = ticketRepository.findById(ticketId)
                 .orElseThrow(() -> new ResourceNotFoundException("Ticket no encontrado con el ID: " + ticketId));
 
-        ticket.setEstado(Estado.valueOf(nuevoEstado.toUpperCase()));
+        try {
+            ticket.setEstado(Estado.valueOf(nuevoEstado.toUpperCase()));
+        } catch (IllegalArgumentException ex) {
+            throw new InvalidStatusException("Estado inválido: " + nuevoEstado);
+        }
+
         Ticket ticketActualizado = ticketRepository.save(ticket);
 
         return mapearATicketResponse(ticketActualizado);
     }
 
     private TicketResponse mapearATicketResponse(Ticket ticket) {
-        List<TicketMessage> mensajes;
-        try {
-            mensajes = ticketMessageRepository.buscarMensajesPorTicketId(ticket.getId());
-            if (mensajes == null) {
-                mensajes = new ArrayList<>();
-            }
-        } catch (Exception e) {
-            mensajes = new ArrayList<>();
+        List<TicketMessage> mensajesEntidad = ticketMessageRepository.buscarMensajesPorTicketId(ticket.getId());
+        
+        List<TicketResponse.MessageDto> mensajesDto = new ArrayList<>();
+        if (mensajesEntidad != null) {
+            mensajesDto = mensajesEntidad.stream()
+                    .map(m -> TicketResponse.MessageDto.builder()
+                            .id(m.getId())
+                            .emisorId(m.getRemitenteTipo())
+                            .contenido(m.getMensaje())
+                            .fechaEnvio(m.getFechaEnvio())
+                            .build())
+                    .collect(Collectors.toList());
         }
 
         return TicketResponse.builder()
@@ -84,7 +94,7 @@ public class SoporteService {
                 .descripcion(ticket.getDescripcion())
                 .estado(ticket.getEstado() != null ? ticket.getEstado().name() : "ABIERTO")
                 .fechaCreacion(ticket.getFechaCreacion())
-                .mensajes(mensajes)
+                .mensajes(mensajesDto)
                 .build();
     }
 }

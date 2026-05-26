@@ -1,14 +1,10 @@
 package com.mariluz.soporte.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
 @Data
 public class TicketRequest {
-    
-    @NotNull(message = "El ID de usuario es obligatorio")
-    private String userId;
 
     @NotBlank(message = "El asunto no puede estar vacío")
     private String asunto;

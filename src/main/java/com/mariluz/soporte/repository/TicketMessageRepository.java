@@ -12,7 +12,7 @@ import com.mariluz.soporte.model.TicketMessage;
 @Repository
 public interface TicketMessageRepository extends JpaRepository<TicketMessage, String> {
 
-    // Forzamos el nombre exacto que busca tu Service, recibiendo el Integer del id del ticket
+    
     @Query("SELECT m FROM TicketMessage m WHERE m.ticketId = :ticketId ORDER BY m.fechaEnvio ASC")
     List<TicketMessage> buscarMensajesPorTicketId(@Param("ticketId") Integer ticketId);
 }
