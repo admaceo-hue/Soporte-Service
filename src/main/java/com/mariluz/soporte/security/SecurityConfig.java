@@ -8,6 +8,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import com.mariluz.soporte.exception.CustomAuthenticationEntryPoint; // <-- IMPORTAMOS TU NUEVA EXCEPCIÓN
+
 import lombok.RequiredArgsConstructor;
 
 @Configuration
@@ -16,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final CustomAuthenticationEntryPoint customAuthenticationEntryPoint; // <-- INYECTAMOS EL MANEJADOR
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http)
@@ -23,6 +26,10 @@ public class SecurityConfig {
         http
             .csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth.anyRequest().authenticated())
+            //  CAPTURAMOS EL ERROR 403/401 DE AUTENTICACIÓN FALLIDA 
+            .exceptionHandling(exception -> exception
+                .authenticationEntryPoint(customAuthenticationEntryPoint)
+            )
             .sessionManagement(sm ->
                 sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
             )

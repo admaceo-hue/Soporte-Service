@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mariluz.soporte.dto.TicketRequest;
@@ -22,7 +21,7 @@ import com.mariluz.soporte.service.SoporteService;
 import jakarta.validation.Valid;
 
 @RestController
-@RequestMapping("soporte")
+@RequestMapping("/soporte")
 public class SoporteController {
 
     @Autowired
@@ -51,9 +50,12 @@ public class SoporteController {
     @PutMapping("/admin/{ticketId}/estado")
     public ResponseEntity<TicketResponse> actualizarEstadoTicket(
             @PathVariable Integer ticketId,
-            @RequestParam String nuevoEstado) {
+            @RequestBody java.util.Map<String, String> body) {
         
-        TicketResponse ticketActualizado = soporteService.actualizarEstadoTicket(ticketId, nuevoEstado);
+        String nuevoEstado = body.get("nuevoEstado");
+        String mensaje = body.get("mensaje");
+        
+        TicketResponse ticketActualizado = soporteService.actualizarEstadoTicket(ticketId, nuevoEstado, mensaje);
         return ResponseEntity.ok(ticketActualizado);
     }
 }

@@ -6,6 +6,7 @@ import java.util.Map;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -14,7 +15,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // 1. Captura cuando un Ticket no existe (404 Not Found)
+    // toma cuando un Ticket no existe (404 Not Found)
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<Map<String, Object>> manejarResourceNotFound(ResourceNotFoundException ex) {
         Map<String, Object> respuesta = new HashMap<>();
@@ -25,7 +26,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(respuesta, HttpStatus.NOT_FOUND);
     }
 
-    // 2. Captura cuando mandan un estado inválido o error del Enum (400 Bad Request)
+    // toma cuando mandan un estado inválido o error del Enum (400 Bad Request)
     @ExceptionHandler({InvalidStatusException.class, IllegalArgumentException.class})
     public ResponseEntity<Map<String, Object>> manejarEstadoInvalido(Exception ex) {
         Map<String, Object> respuesta = new HashMap<>();
@@ -36,7 +37,18 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(respuesta, HttpStatus.BAD_REQUEST);
     }
 
-    // 3. Captura los errores de @Valid (Campos vacíos en el DTO) (400 Bad Request)
+    // toma cuando el Body de la petición viene vacío o falta por completo (400 Bad Request)
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<Map<String, Object>> manejarFaltaRequestBody(HttpMessageNotReadableException ex) {
+        Map<String, Object> respuesta = new HashMap<>();
+        respuesta.put("timestamp", LocalDateTime.now());
+        respuesta.put("status", HttpStatus.BAD_REQUEST.value());
+        respuesta.put("error", "Petición Incorrecta");
+        respuesta.put("message", "Debe completar los campos requeridos en el cuerpo (Body) de la petición.");
+        return new ResponseEntity<>(respuesta, HttpStatus.BAD_REQUEST);
+    }
+
+    // toma los errores de @Valid (Campos vacíos en el DTO) (400 Bad Request)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<Map<String, Object>> manejarValidaciones(MethodArgumentNotValidException ex) {
         Map<String, Object> respuesta = new HashMap<>();
@@ -56,7 +68,7 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(respuesta, HttpStatus.BAD_REQUEST);
     }
 
-    // 4. Captura cualquier otro error inesperado del sistema (500 Internal Server Error)
+    // toma cualquier otro error inesperado del sistema (500 Internal Server Error)
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> manejarErroresGenerales(Exception ex) {
         Map<String, Object> respuesta = new HashMap<>();

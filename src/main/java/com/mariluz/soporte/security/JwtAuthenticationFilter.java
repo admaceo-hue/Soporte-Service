@@ -32,7 +32,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     @Autowired
     public JwtAuthenticationFilter(
         JwtUtil jwtUtil,
-        // Inyección de dependencia para resolver excepciones
+        // Inyección de dependencia para resolver excepciones 
         @Qualifier(
             "handlerExceptionResolver"
         ) HandlerExceptionResolver exceptionResolver
@@ -67,7 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
                     UsernamePasswordAuthenticationToken authToken =
                         new UsernamePasswordAuthenticationToken(
-                            currentUser,
+                            currentUser.getEmail(),
                             null,
                             authorities
                         );
@@ -84,7 +84,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             } catch (JwtException | IllegalArgumentException e) {
                 SecurityContextHolder.clearContext();
-                // ademas de limpiar el contexto arrojamos el error para manejarlo desde el handler
+                
                 exceptionResolver.resolveException(request, response, null, e);
                 return;
             }

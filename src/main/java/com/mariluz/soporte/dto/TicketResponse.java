@@ -14,7 +14,7 @@ import lombok.NoArgsConstructor;
 @Builder
 public class TicketResponse {
     private Integer id;
-    private String userId;
+    private String email;
     private String asunto;
     private String descripcion;
     private String estado;

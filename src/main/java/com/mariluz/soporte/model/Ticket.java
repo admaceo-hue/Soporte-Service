@@ -27,9 +27,8 @@ public class Ticket {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
 
-   
     @Column(name = "user_id", nullable = false)
-    private String userId;
+    private String email;
 
     @Column(nullable = false)
     private String asunto;
