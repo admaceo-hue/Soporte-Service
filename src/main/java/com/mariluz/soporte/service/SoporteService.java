@@ -109,15 +109,17 @@ public class SoporteService {
             }
         }
 
-        if (request.getMensaje() != null && !request.getMensaje().trim().isEmpty()) {
-            TicketMessage nuevoMensaje = TicketMessage.builder()
-                    .ticketId(ticket.getId())
-                    .remitenteTipo(remitenteTipo)
-                    .mensaje(request.getMensaje())
-                    .fechaEnvio(LocalDateTime.now())
-                    .build();
-            ticketMessageRepository.save(nuevoMensaje);
+        if (ticket.getEstado() == Estado.CERRADO) {
+            throw new ForbiddenOperationException("No se pueden agregar mensajes a un ticket cerrado.");
         }
+
+        TicketMessage nuevoMensaje = TicketMessage.builder()
+                .ticketId(ticket.getId())
+                .remitenteTipo(remitenteTipo)
+                .mensaje(request.getMensaje())
+                .fechaEnvio(LocalDateTime.now())
+                .build();
+        ticketMessageRepository.save(nuevoMensaje);
 
         if (huboCambioEstado) {
             ticket = ticketRepository.save(ticket);

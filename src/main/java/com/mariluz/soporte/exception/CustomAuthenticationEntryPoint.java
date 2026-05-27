@@ -9,6 +9,8 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
+import com.mariluz.soporte.dto.ErrorResponse;
+
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -19,21 +21,32 @@ public class CustomAuthenticationEntryPoint implements AuthenticationEntryPoint 
     @Override
     public void commence(HttpServletRequest request, HttpServletResponse response,
                          AuthenticationException authException) throws IOException, ServletException {
-        
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
 
-        // Construimos el JSON a mano como un String puro usando bloques de texto 
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .message("Acceso denegado: Debes iniciar sesión antes de realizar esta operación.")
+                .errors(null)
+                .endpoint(request.getRequestURI())
+                .build();
+
         String jsonRespuesta = """
             {
                 "timestamp": "%s",
                 "status": %d,
-                "error": "No Autorizado",
-                "message": "Acceso denegado: Debes iniciar sesión antes de realizar esta operación."
+                "message": "%s",
+                "errors": null,
+                "endpoint": "%s"
             }
-            """.formatted(LocalDateTime.now().toString(), HttpStatus.UNAUTHORIZED.value());
+            """.formatted(
+                errorResponse.getTimestamp(),
+                errorResponse.getStatus(),
+                errorResponse.getMessage(),
+                errorResponse.getEndpoint()
+        );
 
-        // Lo enviamos directo al cliente
         response.getWriter().write(jsonRespuesta);
     }
 }
