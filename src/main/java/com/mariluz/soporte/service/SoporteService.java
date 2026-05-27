@@ -5,101 +5,140 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import com.mariluz.soporte.dto.TicketRequest;
-import com.mariluz.soporte.dto.TicketResponse;
-import com.mariluz.soporte.exception.InvalidStatusException;
-import com.mariluz.soporte.exception.ResourceNotFoundException;
-import com.mariluz.soporte.model.Estado;
-import com.mariluz.soporte.model.Ticket;
-import com.mariluz.soporte.model.TicketMessage;
-import com.mariluz.soporte.repository.TicketMessageRepository;
-import com.mariluz.soporte.repository.TicketRepository;
+import com.mariluz.soporte.dto.*;
+import com.mariluz.soporte.exception.*;
+import com.mariluz.soporte.model.*;
+import com.mariluz.soporte.repository.*;
+import lombok.RequiredArgsConstructor;
 
 @Service
+@RequiredArgsConstructor
 public class SoporteService {
 
-    @Autowired
-    private TicketRepository ticketRepository;
+    private final TicketRepository ticketRepository;
+    private final TicketMessageRepository ticketMessageRepository;
 
-    @Autowired
-    private TicketMessageRepository ticketMessageRepository;
-    
+// ─── Helpers privados para validar rol de usuario ────────────────────────
+
+    private User getCurrentUser() {
+        Authentication auth =
+            SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !(auth.getPrincipal() instanceof User user)) {
+            // M5: ForbiddenOperationException reemplaza a UnauthorizedOperationException
+            throw new ForbiddenOperationException(
+                "No hay un usuario autenticado"
+            );
+        }
+        return user;
+    }
+
+    private boolean isAdmin(User user) {
+        return user.getRole() != null &&
+               user.getRole().equalsIgnoreCase("ADMIN");
+    }
+
+    private void validateAdminAccess(String message) {
+        if (!isAdmin(getCurrentUser())) {
+            throw new ForbiddenOperationException(message);
+        }
+    }
+
     @Transactional
-    // Crea un nuevo ticket de soporte para el usuario autenticado
-    public TicketResponse crearTicket(TicketRequest request, String userId) {
+    public TicketResponse crearTicket(TicketRequest request) {
+        User currentUser = getCurrentUser();
         Ticket ticket = Ticket.builder()
-                .email(userId)
+                .email(currentUser.getEmail())
                 .asunto(request.getAsunto())
                 .descripcion(request.getDescripcion())
                 .estado(Estado.ABIERTO)
                 .fechaCreacion(LocalDateTime.now())
                 .build();
-
-        Ticket ticketGuardado = ticketRepository.save(ticket);
-        return mapearATicketResponse(ticketGuardado);
+        return mapearATicketResponse(ticketRepository.save(ticket));
     }
 
-    // Lista los tickets de soporte del usuario autenticado
     @Transactional(readOnly = true)
-    public List<TicketResponse> listarTicketsUsuario(String userId) {
-        List<Ticket> tickets = ticketRepository.buscarPorEmail(userId);
-        return tickets.stream()
+    public List<TicketResponse> listarTicketsUsuario() {
+        String userEmail = getCurrentUser().getEmail();
+        return ticketRepository.buscarPorEmailConMensajes(userEmail).stream()
                 .map(this::mapearATicketResponse)
                 .collect(Collectors.toList());
     }
 
-    // Lista todos los tickets de soporte (solo para administradores)
     @Transactional(readOnly = true)
     public List<TicketResponse> listarTodosLosTickets() {
-        List<Ticket> tickets = ticketRepository.findAll();
-        return tickets.stream()
+        validateAdminAccess("Solo los administradores pueden listar todos los tickets.");
+        return ticketRepository.findAllWithMensajes().stream()
                 .map(this::mapearATicketResponse)
                 .collect(Collectors.toList());
     }
 
-    // Actualiza el estado y agrega un mensaje al ticket (solo para administradores)
     @Transactional
-    public TicketResponse actualizarEstadoTicket(Integer ticketId, String nuevoEstado, String mensaje) {
+    public TicketResponse agregarMensajeOActualizarTicket(Integer ticketId, MensajeRequest request) {
         Ticket ticket = ticketRepository.findById(ticketId)
-                .orElseThrow(() -> new ResourceNotFoundException("Ticket no encontrado con el ID: " + ticketId));
+                .orElseThrow(() -> new ResourceNotFoundException("Ticket no encontrado: " + ticketId));
 
-        try {
-            ticket.setEstado(Estado.valueOf(nuevoEstado.toUpperCase()));
-        } catch (IllegalArgumentException ex) {
-            throw new InvalidStatusException("Estado inválido: " + nuevoEstado);
+        User currentUser = getCurrentUser();
+        boolean isAdmin = isAdmin(currentUser);
+        String currentEmail = currentUser.getEmail();
+
+        if (!isAdmin && !ticket.getEmail().equals(currentEmail)) {
+            throw new ForbiddenOperationException("No tienes permiso para interactuar con este ticket.");
         }
 
-        if (mensaje != null && !mensaje.trim().isEmpty()) {
-            TicketMessage notaAdmin = TicketMessage.builder()
+        RemitenteTipo remitenteTipo = isAdmin ? RemitenteTipo.ADMINISTRADOR : RemitenteTipo.CLIENTE;
+        boolean huboCambioEstado = false;
+
+        if (request.getNuevoEstado() != null && !request.getNuevoEstado().trim().isEmpty()) {
+            validateAdminAccess("Solo los administradores pueden cambiar el estado del ticket.");
+
+            Estado estadoEntrante;
+            try {
+                estadoEntrante = Estado.valueOf(request.getNuevoEstado().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                throw new InvalidStatusException("Estado inválido: " + request.getNuevoEstado());
+            }
+
+            if (!ticket.getEstado().equals(estadoEntrante)) {
+                ticket.setEstado(estadoEntrante);
+                huboCambioEstado = true;
+            }
+        }
+
+        if (request.getMensaje() != null && !request.getMensaje().trim().isEmpty()) {
+            TicketMessage nuevoMensaje = TicketMessage.builder()
                     .ticketId(ticket.getId())
-                    .remitenteTipo("ADMINISTRADOR")
-                    .mensaje(mensaje)
+                    .remitenteTipo(remitenteTipo)
+                    .mensaje(request.getMensaje())
                     .fechaEnvio(LocalDateTime.now())
                     .build();
-            ticketMessageRepository.save(notaAdmin);
+            ticketMessageRepository.save(nuevoMensaje);
         }
 
-        Ticket ticketActualizado = ticketRepository.save(ticket);
-        return mapearATicketResponse(ticketActualizado);
+        if (huboCambioEstado) {
+            ticket = ticketRepository.save(ticket);
+        }
+
+        return mapearATicketResponse(ticket);
     }
 
     private TicketResponse mapearATicketResponse(Ticket ticket) {
-        List<TicketMessage> mensajesEntidad = ticketMessageRepository.buscarMensajesPorTicketId(ticket.getId());
-        
+        List<TicketMessage> mensajes = ticket.getMensajes();
+
         List<TicketResponse.MessageDto> mensajesDto = new ArrayList<>();
-        if (mensajesEntidad != null) {
-            mensajesDto = mensajesEntidad.stream()
-                    .map(m -> TicketResponse.MessageDto.builder()
-                            .id(m.getId())
-                            .emisorId(m.getRemitenteTipo())
-                            .contenido(m.getMensaje())
-                            .fechaEnvio(m.getFechaEnvio())
-                            .build())
-                    .collect(Collectors.toList());
+        if (mensajes != null) {
+            for (TicketMessage m : mensajes) {
+                mensajesDto.add(TicketResponse.MessageDto.builder()
+                        .id(m.getId())
+                        .remitenteTipo(m.getRemitenteTipo() != null ? m.getRemitenteTipo().name() : "CLIENTE")
+                        .contenido(m.getMensaje())
+                        .fechaEnvio(m.getFechaEnvio())
+                        .build());
+            }
         }
 
         return TicketResponse.builder()

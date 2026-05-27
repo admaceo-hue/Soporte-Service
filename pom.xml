@@ -6,13 +6,13 @@
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
         <version>4.0.6</version>
-        <relativePath/> <!-- lookup parent from repository -->
+        <relativePath/> 
     </parent>
     <groupId>com.mariluz</groupId>
-    <artifactId>carrito</artifactId>
+    <artifactId>soporte-service</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name/>
-    <description/>
+    <name>soporte-service</name>
+    <description>Microservicio de Soporte y Tickets para Tienda Mariluz</description>
     <url/>
     <licenses>
         <license/>
@@ -77,7 +77,6 @@
             <artifactId>spring-boot-starter-webmvc-test</artifactId>
             <scope>test</scope>
         </dependency>
-        <!-- JWT dependencies -->
         <dependency>
             <groupId>io.jsonwebtoken</groupId>
             <artifactId>jjwt-api</artifactId>
@@ -95,9 +94,8 @@
             <version>0.13.0</version>
             <scope>runtime</scope>
         </dependency>
-    
-
     </dependencies>
+    
     <build>
         <plugins>
             <plugin>
@@ -150,5 +148,4 @@
             </plugin>
         </plugins>
     </build>
-
 </project>

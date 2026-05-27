@@ -12,7 +12,9 @@ import com.mariluz.soporte.model.Ticket;
 @Repository
 public interface TicketRepository extends JpaRepository<Ticket, Integer> {
 
-    // Usamos @Query para decirle explícitamente a Spring qué buscar sin que se confunda con el nombre del método
-    @Query("SELECT t FROM Ticket t WHERE t.email = :email")
-    List<Ticket> buscarPorEmail(@Param("email") String email);
+    @Query("SELECT DISTINCT t FROM Ticket t LEFT JOIN FETCH t.mensajes WHERE t.email = :email")
+    List<Ticket> buscarPorEmailConMensajes(@Param("email") String email);
+
+    @Query("SELECT DISTINCT t FROM Ticket t LEFT JOIN FETCH t.mensajes")
+    List<Ticket> findAllWithMensajes();
 }

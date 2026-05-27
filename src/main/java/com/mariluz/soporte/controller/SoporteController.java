@@ -2,10 +2,8 @@ package com.mariluz.soporte.controller;
 
 import java.util.List;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -14,48 +12,42 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mariluz.soporte.dto.MensajeRequest;
 import com.mariluz.soporte.dto.TicketRequest;
 import com.mariluz.soporte.dto.TicketResponse;
 import com.mariluz.soporte.service.SoporteService;
 
 import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
 
 @RestController
-@RequestMapping("/soporte")
+@RequestMapping("/tickets")
+@RequiredArgsConstructor 
 public class SoporteController {
 
-    @Autowired
-    private SoporteService soporteService;
+    private final SoporteService soporteService;
 
+    // Crear ticket
     @PostMapping("/crear")
-    public ResponseEntity<TicketResponse> crearTicket(@Valid @RequestBody TicketRequest request, Authentication authentication) {
-        String userId = authentication.getName();
-        TicketResponse nuevoTicket = soporteService.crearTicket(request, userId);
-        return new ResponseEntity<>(nuevoTicket, HttpStatus.CREATED);
+    public ResponseEntity<TicketResponse> crearTicket(@Valid @RequestBody TicketRequest request) {
+        return new ResponseEntity<>(soporteService.crearTicket(request), HttpStatus.CREATED);
     }
 
+    // Listar tickets propios
     @GetMapping("/mis-tickets")
-    public ResponseEntity<List<TicketResponse>> listarTicketsUsuario(Authentication authentication) {
-        String userId = authentication.getName();
-        List<TicketResponse> tickets = soporteService.listarTicketsUsuario(userId);
-        return ResponseEntity.ok(tickets);
+    public ResponseEntity<List<TicketResponse>> listarTicketsUsuario() {
+        return ResponseEntity.ok(soporteService.listarTicketsUsuario());
     }
 
-    @GetMapping("/admin/todos")
+    // Listar TODOS los tickets 
+    @GetMapping("/todos")
     public ResponseEntity<List<TicketResponse>> listarTodosLosTickets() {
-        List<TicketResponse> tickets = soporteService.listarTodosLosTickets();
-        return ResponseEntity.ok(tickets);
+        return ResponseEntity.ok(soporteService.listarTodosLosTickets());
     }
 
-    @PutMapping("/admin/{ticketId}/estado")
-    public ResponseEntity<TicketResponse> actualizarEstadoTicket(
-            @PathVariable Integer ticketId,
-            @RequestBody java.util.Map<String, String> body) {
-        
-        String nuevoEstado = body.get("nuevoEstado");
-        String mensaje = body.get("mensaje");
-        
-        TicketResponse ticketActualizado = soporteService.actualizarEstadoTicket(ticketId, nuevoEstado, mensaje);
-        return ResponseEntity.ok(ticketActualizado);
+    // Agregar mensaje y cambiar estado
+    @PutMapping("/{ticketId}/mensajes")
+    public ResponseEntity<TicketResponse> agregarMensaje(@PathVariable Integer ticketId, @Valid @RequestBody MensajeRequest request) {
+        return ResponseEntity.ok(soporteService.agregarMensajeOActualizarTicket(ticketId, request));
     }
 }

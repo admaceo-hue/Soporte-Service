@@ -7,75 +7,136 @@ import java.util.Map;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import com.mariluz.soporte.dto.ErrorResponse;
+
+import io.jsonwebtoken.ExpiredJwtException;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpServletRequest;
+
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // toma cuando un Ticket no existe (404 Not Found)
     @ExceptionHandler(ResourceNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> manejarResourceNotFound(ResourceNotFoundException ex) {
-        Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", HttpStatus.NOT_FOUND.value());
-        respuesta.put("error", "Recurso no encontrado");
-        respuesta.put("message", ex.getMessage());
-        return new ResponseEntity<>(respuesta, HttpStatus.NOT_FOUND);
+    public ResponseEntity<ErrorResponse> manejarResourceNotFound(ResourceNotFoundException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.NOT_FOUND.value())
+                .message(ex.getMessage())
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.NOT_FOUND);
     }
 
-    // toma cuando mandan un estado inválido o error del Enum (400 Bad Request)
-    @ExceptionHandler({InvalidStatusException.class, IllegalArgumentException.class})
-    public ResponseEntity<Map<String, Object>> manejarEstadoInvalido(Exception ex) {
-        Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", HttpStatus.BAD_REQUEST.value());
-        respuesta.put("error", "Petición Incorrecta");
-        respuesta.put("message", "El estado proporcionado no es válido. Usa: ABIERTO, EN_PROGRESO o CERRADO.");
-        return new ResponseEntity<>(respuesta, HttpStatus.BAD_REQUEST);
+    @ExceptionHandler(InvalidStatusException.class)
+    public ResponseEntity<ErrorResponse> manejarEstadoInvalido(InvalidStatusException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message(ex.getMessage())
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    // toma cuando el Body de la petición viene vacío o falta por completo (400 Bad Request)
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> manejarIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message("Argumento inválido en la petición.")
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
+    }
+
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<Map<String, Object>> manejarFaltaRequestBody(HttpMessageNotReadableException ex) {
-        Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", HttpStatus.BAD_REQUEST.value());
-        respuesta.put("error", "Petición Incorrecta");
-        respuesta.put("message", "Debe completar los campos requeridos en el cuerpo (Body) de la petición.");
-        return new ResponseEntity<>(respuesta, HttpStatus.BAD_REQUEST);
+    public ResponseEntity<ErrorResponse> manejarFaltaRequestBody(HttpMessageNotReadableException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message("Debe completar los campos requeridos en el cuerpo (Body) de la petición.")
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    // toma los errores de @Valid (Campos vacíos en el DTO) (400 Bad Request)
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> manejarValidaciones(MethodArgumentNotValidException ex) {
-        Map<String, Object> respuesta = new HashMap<>();
+    public ResponseEntity<ErrorResponse> manejarValidaciones(MethodArgumentNotValidException ex, HttpServletRequest request) {
         Map<String, String> erroresCampos = new HashMap<>();
-
         ex.getBindingResult().getAllErrors().forEach((error) -> {
             String nombreCampo = ((FieldError) error).getField();
             String mensajeError = error.getDefaultMessage();
             erroresCampos.put(nombreCampo, mensajeError);
         });
 
-        respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", HttpStatus.BAD_REQUEST.value());
-        respuesta.put("error", "Error de Validación");
-        respuesta.put("fields", erroresCampos);
-
-        return new ResponseEntity<>(respuesta, HttpStatus.BAD_REQUEST);
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.BAD_REQUEST.value())
+                .message("Error de validación en los campos enviados.")
+                .errors(erroresCampos)
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    // toma cualquier otro error inesperado del sistema (500 Internal Server Error)
+    @ExceptionHandler(ForbiddenOperationException.class)
+    public ResponseEntity<ErrorResponse> manejarForbiddenOperation(ForbiddenOperationException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .message(ex.getMessage())
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErrorResponse> manejarAccessDenied(AccessDeniedException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.FORBIDDEN.value())
+                .message("No tienes permisos suficientes para realizar esta acción.")
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.FORBIDDEN);
+    }
+
+    @ExceptionHandler(ExpiredJwtException.class)
+    public ResponseEntity<ErrorResponse> manejarJwtExpirado(ExpiredJwtException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .message("El token de acceso ha expirado.")
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
+    @ExceptionHandler(JwtException.class)
+    public ResponseEntity<ErrorResponse> manejarJwtInvalido(JwtException ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.UNAUTHORIZED.value())
+                .message("El token de autenticación es inválido o está malformado.")
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.UNAUTHORIZED);
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Map<String, Object>> manejarErroresGenerales(Exception ex) {
-        Map<String, Object> respuesta = new HashMap<>();
-        respuesta.put("timestamp", LocalDateTime.now());
-        respuesta.put("status", HttpStatus.INTERNAL_SERVER_ERROR.value());
-        respuesta.put("error", "Error Interno del Servidor");
-        respuesta.put("message", ex.getMessage());
-        return new ResponseEntity<>(respuesta, HttpStatus.INTERNAL_SERVER_ERROR);
+    public ResponseEntity<ErrorResponse> manejarErroresGenerales(Exception ex, HttpServletRequest request) {
+        ErrorResponse error = ErrorResponse.builder()
+                .timestamp(LocalDateTime.now())
+                .status(HttpStatus.INTERNAL_SERVER_ERROR.value())
+                .message(ex.getMessage())
+                .endpoint(request.getRequestURI())
+                .build();
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }
