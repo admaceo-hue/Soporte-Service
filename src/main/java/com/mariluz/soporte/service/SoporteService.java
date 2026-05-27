@@ -29,7 +29,7 @@ public class SoporteService {
         Authentication auth =
             SecurityContextHolder.getContext().getAuthentication();
         if (auth == null || !(auth.getPrincipal() instanceof User user)) {
-            // M5: ForbiddenOperationException reemplaza a UnauthorizedOperationException
+            
             throw new ForbiddenOperationException(
                 "No hay un usuario autenticado"
             );
